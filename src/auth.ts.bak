@@ -1,0 +1,51 @@
+import {
+  AuthorizationRequest,
+  AuthorizationRequestJson,
+} from '@openid/appauth/built/authorization_request'
+import {
+  AuthorizationNotifier,
+  AuthorizationRequestHandler,
+  AuthorizationRequestResponse,
+  BUILT_IN_PARAMETERS,
+} from '@openid/appauth/built/authorization_request_handler'
+import { AuthorizationResponse } from '@openid/appauth/built/authorization_response'
+import { AuthorizationServiceConfiguration } from '@openid/appauth/built/authorization_service_configuration'
+import { RedirectRequestHandler } from '@openid/appauth/built/redirect_based_handler'
+import { NodeRequestor } from '@openid/appauth/built/node_support/node_requestor'
+import { StringMap } from '@openid/appauth/built/types'
+
+const requestor = new NodeRequestor()
+
+export default async function() {
+  const notifier = new AuthorizationNotifier()
+  const authorizationHandler = new RedirectRequestHandler()
+  authorizationHandler.setAuthorizationNotifier(notifier)
+  notifier.setAuthorizationListener((request, response, error) => {
+    console.log('Authorization request complete ', request, response, error)
+    // if (response) {
+    //   this.code = response.code;
+    //   this.showMessage(`Authorization Code ${response.code}`);
+    // }
+  })
+  const a = await authorizationHandler.completeAuthorizationRequestIfPossible()
+
+  const configuration = await AuthorizationServiceConfiguration.fetchFromIssuer(
+    'https://connect.ch.tudelft.nl',
+    requestor
+  )
+  const extras: StringMap = { prompt: 'consent', access_type: 'offline' }
+
+  // create a request
+  const authorizationRequestParams: AuthorizationRequestJson = {
+    client_id: 'a2427f8d-dba1-463a-943e-6df6bec8129d',
+    redirect_uri: 'http://localhost:8080',
+    scope: 'ldap openid',
+    response_type: AuthorizationRequest.RESPONSE_TYPE_TOKEN,
+  }
+  const authorizationRequest = new AuthorizationRequest(authorizationRequestParams, undefined, false)
+  let resp = await authorizationHandler.performAuthorizationRequest(
+    configuration,
+    authorizationRequest
+  )
+  console.log(resp)
+}
